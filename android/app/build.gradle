@@ -1,0 +1,113 @@
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withReader('UTF-8') { reader ->
+        localProperties.load(reader)
+    }
+}
+
+def flutterRoot = localProperties.getProperty('flutter.sdk')
+if (flutterRoot == null) {
+    throw new GradleException("Flutter SDK not found. Define location with flutter.sdk in the local.properties file.")
+}
+
+def flutterVersionCode = localProperties.getProperty('flutter.versionCode')
+if (flutterVersionCode == null) {
+    flutterVersionCode = '1'
+}
+
+def flutterVersionName = localProperties.getProperty('flutter.versionName')
+if (flutterVersionName == null) {
+    flutterVersionName = '1.0.0'
+}
+apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
+apply plugin: 'hannibal'
+
+apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
+def keystorePropertiesFile = rootProject.file("key.properties")
+
+def keystoreProperties = new Properties()
+keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+
+def releaseTime() {
+    return new Date().format("yyyy_MM_dd", TimeZone.getTimeZone("UTC"))
+}
+android {
+    compileSdkVersion 31
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+
+    sourceSets {
+        main.java.srcDirs += 'src/main/kotlin'
+    }
+
+
+    defaultConfig {
+        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
+        applicationId "com.sinosoft.doctor_project"
+        minSdkVersion 21
+        targetSdkVersion 31
+        multiDexEnabled true
+        versionCode flutterVersionCode.toInteger()
+        versionName flutterVersionName
+        ndk {
+            //选择要添加的对应 cpu 类型的 .so 库。
+//            abiFilters 'armeabi', 'armeabi-v7a', 'x86', 'x86_64', 'mips', 'mips64', 'arm64-v8a'
+//            abiFilters  'armeabi-v7a'
+            abiFilters  'armeabi-v7a','x86'
+        }
+        manifestPlaceholders = [
+                JPUSH_PKGNAME: applicationId,
+                JPUSH_APPKEY : "b9af57826f0f309d8535255a", // NOTE: JPush 上注册的包名对应的 Appkey.
+                JPUSH_CHANNEL: "developer-default", //暂时填写默认值即可.
+        ]
+    }
+    signingConfigs {
+        release {
+            keyAlias keystoreProperties['keyAlias']
+            keyPassword keystoreProperties['keyPassword']
+            storeFile file(keystoreProperties['storeFile'])
+            storePassword keystoreProperties['storePassword']
+        }
+    }
+    buildTypes {
+        release {
+            consumerProguardFiles 'proguard-rules.pro'
+            signingConfig signingConfigs.release
+            applicationVariants.all { variant ->
+                variant.outputs.all {
+                    outputFileName = "tonghai-${defaultConfig.versionName}-${releaseTime()}.apk"
+                }
+            }
+        }
+    }
+}
+
+flutter {
+    source '../..'
+}
+
+dependencies {
+    implementation 'com.tencent.tinker:tinker-android-lib:1.9.14.6'
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation files('libs/flutterpatch.aar')
+    implementation 'com.jakewharton:process-phoenix:2.1.2'
+    implementation 'com.aliyun.ams:alicloud-android-hotfix:3.3.5'
+    implementation 'com.tencent.bugly:crashreport:latest.release' //其中latest.release指代最新Bugly SDK版本号，也可以指定明确的版本号，例如4.0.3
+    implementation 'com.android.support:multidex:1.0.3'
+//    implementation 'com.qcloud.cos:cos-android:5.7.+'
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+}
+//configurations.all {
+//    resolutionStrategy {
+//        force 'androidx.core:core:1.6.0'
+//        force 'androidx.core:core-ktx:1.6.0'
+//    }
+//}
